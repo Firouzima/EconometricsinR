@@ -1,0 +1,203 @@
+---
+title: "9 Multiple Regression Analysis"
+author: "Mohammadamin Firouzi"
+date: "2025-04-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Multiple Regression Analysis
+
+$y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \beta_3x_3 + \cdots + \beta_kx_k + u$
+
+```{r message=FALSE, warning=FALSE}
+
+library(wooldridge)
+data(wage1)
+attach(wage1)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+wage_educ_exper = lm(wage ~ educ + exper)
+summary(wage_educ_exper)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+wage_educ_exper_female = lm(wage ~ educ + exper + female)
+summary(wage_educ_exper_female)
+```
+
+------------------------------------------------------------------------
+
+#### OLS in Matrix Form:
+
+$\hat{\beta} = (X'X)^{-1} X'Y$
+
+$X' = \text{t}(X)$
+
+$X'X = \text{t}(X) \quad \text{%*%} \quad X$
+
+$(X'X)^{-1} = \text{solve}(\text{t}(X) \quad \text{%*%} \quad X)$
+
+$\hat{\beta} = \text{solve}(t(X) \quad \text{%*%} \quad X) \quad \text{%*%} \quad t(X) \quad \text{%*%} \quad Y$
+
+```{r message=FALSE, warning=FALSE}
+
+Y = wage 
+X = cbind(1, educ, exper)
+head(X)
+cat('\n')
+
+(b = solve(t(X) %*% X) %*% t(X) %*% Y)
+```
+
+------------------------------------------------------------------------
+
+#### Residuals:
+
+$\hat{u} = Y - X\hat{\beta}$
+
+$\hat{u} = Y - (X \quad \text{%*%} \quad b)$
+
+#### Variance of the error term:
+
+$\hat{\sigma}^2 = \frac{1}{n - k - 1} \hat{u'}\hat{u}$
+
+#### Standard error of the regression:
+
+$\hat{\sigma} = \sqrt{\frac{1}{n - k - 1} \hat{u'}\hat{u}}$
+
+```{r message=FALSE, warning=FALSE}
+
+n = nrow(wage1)
+k = 2
+
+uhat = Y - X %*% b
+
+sigsqhat = as.numeric(t(uhat) %*% uhat / (n - k - 1))
+(ser = sqrt(sigsqhat))
+```
+
+------------------------------------------------------------------------
+
+#### OLS variance-covariance matrix:
+
+$\widehat{\text{Var}(\hat{\beta})} = \hat{\sigma}^2(X'X)^{-1}$
+
+```{r message=FALSE, warning=FALSE}
+
+vbhat = sigsqhat * solve(t(X) %*% X)
+
+(se = sqrt(diag(vbhat)))
+```
+
+------------------------------------------------------------------------
+
+#### VIF:
+
+```{r message=FALSE, warning=FALSE}
+
+# install.packages('car')
+library(car)
+
+vif(wage_educ_exper)
+cat('\n')
+vif(wage_educ_exper_female)
+```
+
+------------------------------------------------------------------------
+
+#### Confidence Intervals:
+
+$\hat{\beta_j} \quad \pm \quad c \cdot \text{se}(\hat{\beta_j})$
+
+```{r message=FALSE, warning=FALSE}
+
+confint(wage_educ_exper, level = 0.95)
+```
+
+------------------------------------------------------------------------
+
+#### F-test:
+
+```{r}
+
+# CV for alpha = 5% using the F distribution with 3 and 522 d.f.:
+
+qf(1 - 0.05, 3, 522)
+
+```
+
+$F = \cfrac{R^2_{ur} - R^2_{r}}{1 - R^2_{ur}} \cdot \cfrac{n - k - 1}{q}$
+
+```{r message=FALSE, warning=FALSE}
+
+rregression = lm(wage ~ educ)
+(r2.ur = summary(wage_educ_exper_female)$r.squared)
+(r2.r = summary(rregression)$r.squared)
+(F = (r2.ur - r2.r) / (1 - r2.ur) * 522/2)
+(p_value = 1 - pf(F, 2, 522))
+```
+
+```{r message=FALSE, warning=FALSE}
+
+linearHypothesis(wage_educ_exper_female, c('exper', 'female'))
+cat('\n')
+
+linearHypothesis(wage_educ_exper_female, c('educ = 2*exper'))
+cat('\n')
+
+R = rbind(c(0, 0, 1, 0),
+          c(0, 0, 0, 1))
+linearHypothesis(wage_educ_exper_female, hypothesis.matrix = R)
+```
+
+------------------------------------------------------------------------
+
+#### Reporting Regression Results:
+
+```{r message=FALSE, warning=FALSE}
+
+data("fertil1")
+
+model1 = lm(kids ~ meduc, fertil1)
+model2 = lm(kids ~ meduc + feduc, fertil1)
+model3 = lm(kids ~ meduc + feduc + black, fertil1)
+
+# install.packages('stargazer')
+library(stargazer)
+
+stargazer(list(model1, model2, model3), type = 'text', keep.stat = c('n', 'rsq'))
+```
+
+------------------------------------------------------------------------
+
+#### LM test:
+
+As an alternative to the F tests, LM tests for the same sort of hypotheses can be very useful with large samples. In the linear regression setup, the test statistic is
+
+$LM = n\cdot R^2_{\tilde{u}}$
+
+$n$ = the sample size
+
+$R^2_{\tilde{u}}$ = R2 statistic in a regression of the residual $\tilde{u}$ from the restricted model on the unrestricted set of regressors.
+
+Under the null hypothesis, it is asymptotically distributed as $\chi^2_{q}$ with $q$ denoting the number of restrictions.
+
+```{r}
+
+uhat = resid(model1)
+LMreg = lm(uhat ~ meduc + feduc + black, fertil1)
+R2 = summary(LMreg)$r.squared
+(LM = R2 * nobs(LMreg))
+qchisq(1 - 0.05, 2)
+1 - pchisq(LM, 2)
+
+linearHypothesis(model3, c('feduc = 0', 'black = 0'))
+summary(model3)
+```

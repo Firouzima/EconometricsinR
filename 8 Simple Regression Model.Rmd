@@ -1,0 +1,161 @@
+---
+title: "8 Simple Regression Model"
+author: "Mohammadamin Firouzi"
+date: "2025-04-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The Simple Regression Model
+
+```{r message=FALSE, warning=FALSE}
+
+library(wooldridge)
+library(ggplot2)
+```
+
+$y = \hat\alpha + \hat\beta x + \varepsilon$
+
+$\hat\beta = \frac{\text{cov(y, x)}}{\text{var(x)}}$
+
+$\hat\alpha = \bar y - \hat\beta \bar x$
+
+```{r message=FALSE, warning=FALSE}
+
+data(wage1)
+attach(wage1)
+```
+
+$\text{wage} = \hat\alpha + \hat\beta \text{educ} + \varepsilon$
+
+Manually:
+
+```{r}
+
+(b = cov(wage, educ)/var(educ))
+(a = mean(wage) - b * mean(educ))
+
+detach(wage1)
+```
+
+lm(y \~ x):
+
+```{r message=FALSE, warning=FALSE}
+
+wage_vs_educ = lm(wage ~ educ, data = wage1)
+wage_vs_educ$coefficients
+```
+
+#### Plotting
+
+```{r message=FALSE, warning=FALSE}
+
+plot(wage1$wage ~ wage1$educ, pch = 20,
+     ylab = 'Wage', xlab = 'Education', cex = 1.2, col = 'steelblue')
+title(main = 'Wage vs Education')
+abline(a = a, b = b, col = 'red', lwd = 2) 
+#or abline(wage_vs_educ)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+ggplot(wage1, aes(educ, wage)) +
+  geom_point(position = 'jitter', color = 'steelblue') +
+  geom_smooth(method = 'lm', se = FALSE, color = 'red') +
+  labs(title = 'Wage vs Education', caption = 'Source: Wooldridge, 2019') +
+  xlab('Education') +
+  ylab('Wage') +
+  theme_light()
+```
+
+```{r message=FALSE, warning=FALSE}
+
+names(wage_vs_educ)
+
+wage_vs_educ$residuals[1:10]
+#resid(wage_vs_educ)
+
+wage_vs_educ$fitted.values[1:10]
+#fitted(wage_vs_educ)
+
+coef(wage_vs_educ)
+# wage_vs_educ$coefficients
+
+plot(wage_vs_educ$fitted.values, wage_vs_educ$residuals, pch = 20)
+```
+
+#### Three properties of OLS:
+
+$1. \quad E(\hat{u}) = 0$
+
+$2. \quad \text{cov}(x, \hat{u}) = 0$
+
+$3. \quad \bar{y} = a + b\bar{x}$
+
+```{r message=FALSE, warning=FALSE}
+
+mean(wage_vs_educ$residuals)
+
+cov(wage1$educ, wage_vs_educ$residuals)
+
+wage_vs_educ$coefficients[1] + wage_vs_educ$coefficients[2] * mean(wage1$educ)
+
+mean(wage1$wage)
+
+```
+
+#### Goodness of Fit:
+
+```{r message=FALSE, warning=FALSE}
+
+var(wage_vs_educ$fitted.values) / var(wage1$wage)
+
+1 - var(wage_vs_educ$residuals) / var(wage1$wage)
+
+cor(wage1$wage, wage_vs_educ$fitted.values) ^ 2
+```
+
+#### Summary function:
+
+```{r message=FALSE, warning=FALSE}
+
+summary(wage_vs_educ)
+```
+
+#### Confidence intervals:
+
+```{r message=FALSE, warning=FALSE}
+
+confint(wage_vs_educ)
+confint(wage_vs_educ, level = 0.99)
+
+reg_sum = summary(wage_vs_educ)
+c("lower" = reg_sum$coef[2,1] - qt(0.975,df = reg_sum$df[2]) * reg_sum$coef[2,2],
+  "upper" = reg_sum$coef[2,1] + qt(0.975,df = reg_sum$df[2]) * reg_sum$coef[2,2])
+```
+
+#### Regression through the origin and regression on a constant:
+
+```{r message=FALSE, warning=FALSE}
+
+
+wage_vs_educ_through_origin = lm(wage ~ 0 + educ, data = wage1)
+summary(wage_vs_educ_through_origin)
+wage_vs_educ_on_constant = lm(wage ~ 1, data = wage1)
+summary(wage_vs_educ_on_constant)
+
+ggplot(wage1, aes(educ, wage)) +
+  geom_smooth(method = lm, formula = y ~ 0 + x, se = FALSE, linetype = 2, 
+              aes(color = 'Regression through the origin')) +
+  geom_smooth(method = lm, formula = y ~ 1, se = FALSE, linetype = 4,
+              aes(color = 'Regression on a constant')) +
+  geom_smooth(method = lm, se = FALSE, aes(color = 'Original regression')) +
+  labs(title = 'Wage vs Education', caption = 'Source: Wooldridge, 2019') +
+  xlab('Education') +
+  ylab('Wage') +
+  theme_light() +
+  scale_colour_manual(name=" ", values=c("blue", "red", 'darkgreen'))
+```

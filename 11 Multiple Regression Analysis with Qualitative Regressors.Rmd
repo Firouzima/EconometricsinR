@@ -1,0 +1,106 @@
+---
+title: "11 Multiple Regression Analysis with Qualitative Regressors"
+author: "Mohammadamin Firouzi"
+date: "2025-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Multiple Regression Analysis with Qualitative Regressors
+
+If a single dummy variable is used in a model, its coefficient represents the difference in the intercept between groups.
+
+```{r message=FALSE, warning=FALSE}
+
+library(dplyr)
+
+data(wage1, package = 'wooldridge')
+wage_vs_female = lm(wage ~ female, wage1)
+summary(wage_vs_female)
+
+mean = wage1 |>
+  group_by(female) |>
+  summarize(wage_mean = mean(wage))
+
+mean
+```
+
+```{r message=FALSE, warning=FALSE}
+
+wage_vs_educ_female = lm(wage ~ educ + female, wage1)
+summary(wage_vs_educ_female)
+```
+
+Its estimated coefficient of −2.27 indicates that on average, a woman makes \$2.27 per hour less than a man with the same education.
+
+```{r message=FALSE, warning=FALSE}
+
+lwagereg = lm(log(wage) ~ married*female + educ + exper + I(exper^2) + tenure + I(tenure^2), wage1)
+summary(lwagereg)
+```
+
+Relative to the reference group of single males with the same education, experience, and tenure, married males make about 21.3% more (the coefficient of married), and single females make about 11.0% less (the coefficient of female). The coefficient of the interaction term implies that married females make around 30.1%-21.3%=8.7% less than single females, 30.1%+11.0%=41.1% less than married males, and 30.1%+11.0%-21.3%=19.8% less than single males.
+
+#### Logical variables:
+
+```{r message=FALSE, warning=FALSE}
+
+wage1$female = as.logical(wage1$female)
+table(wage1$female)
+
+summary(lm(wage ~ female + educ, data = wage1))
+
+wage1$female = as.numeric(wage1$female)
+```
+
+#### Factor variables:
+
+```{r message=FALSE, warning=FALSE}
+
+library('AER')
+data(CPS1985)
+
+head(CPS1985)
+
+attach(CPS1985)
+
+table(gender)
+table(occupation)
+
+regression = lm(wage ~ education + experience + gender + occupation)
+summary(regression)
+```
+
+#### Redefine the reference category:
+
+```{r message=FALSE, warning=FALSE}
+
+occupation = relevel(occupation, 'office')
+
+regression2 = lm(wage ~ education + experience + gender + occupation)
+summary(regression2)
+```
+
+#### Breaking a Numeric Variable Into Categories:
+
+```{r message=FALSE, warning=FALSE}
+
+data(lawsch85, package = 'wooldridge')
+View(lawsch85)
+
+cutpts = c(0, 10, 25, 40, 60, 100, 175)
+
+lawsch85$rankcat = cut(lawsch85$rank, cutpts)
+
+table(lawsch85$rankcat)
+
+lawsch85$rankcat = relevel(lawsch85$rankcat, '(100,175]')
+
+regression3 = lm(log(salary) ~ rankcat + LSAT + GPA + log(libvol) + log(cost), data = lawsch85)
+summary(regression3)
+
+(exp(regression3$coefficients[2]) - 1)
+```

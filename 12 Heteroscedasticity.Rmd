@@ -1,0 +1,156 @@
+---
+title: "12 Heteroscedasticity"
+author: "Mohammadamin Firouzi"
+date: "2025-04-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Heteroscedasticity
+
+If homoscedasticity is violated, the standard errors are invalid and all inferences from t, F and other tests based on them are unreliable.
+
+```{r message=FALSE, warning=FALSE}
+
+library(car); library(lmtest); library(AER); library(scales)
+
+set.seed(123)
+
+x = rep(c(10, 15, 20, 25), each = 25)
+
+e = c() 
+e[1:25] = rnorm(25, sd = 10)
+e[26:50] = rnorm(25, sd = 15)
+e[51:75] = rnorm(25, sd = 20)
+e[76:100] = rnorm(25, sd = 25)
+
+y = 720 - 3.3 * x + e
+
+model = lm(y ~ x)
+
+plot(x = x, y = y, main = 'An Example of Hetroskedasticity',
+     xlab = 'Student-Teacher Ratio', ylab = 'Test Score',
+     cex = 0.5, pch = 20, xlim = c(8, 27), ylim = c(600, 710))
+abline(model, col = 'darkblue')
+
+boxplot(formula = y ~ x, add = TRUE, at = c(10, 15, 20, 25),
+        col = alpha('grey', 0.4), border = 'black')
+
+library(ggplot2)
+
+ggplot(model, aes(x = .fitted, y = .resid)) +
+  geom_point(position = 'jitter') +
+  geom_hline(yintercept = 0) +
+  labs(title='Residual vs. Fitted Values Plot', x='Fitted Values', y='Residuals') +
+  theme_light()
+
+# Alternative:
+
+plot(model)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+data('hprice1', package = 'wooldridge')
+regression = lm(lprice ~ sqrft + bdrms, hprice1)
+coeftest(regression)
+
+plot(regression, which = 1, pch = 20, cex = 1.2)
+```
+
+#### Heteroscedasticity tests
+
+Breusch–Pagan test: If the test statistic has a p-value below an appropriate threshold (e.g. p \< 0.05) then the null hypothesis of homoskedasticity is rejected and heteroskedasticity assumed.
+
+```{r message=FALSE, warning=FALSE}
+
+bpreg = lm(I(resid(regression)^2) ~ sqrft + bdrms, hprice1)
+(bpstat = summary(bpreg)$r.squared * nobs(bpreg))
+
+bptest(regression)
+```
+
+White test: it establishes whether the variance of the errors in a regression model is constant.
+
+```{r message=FALSE, warning=FALSE}
+
+#install.packages('skedastic')
+library(skedastic)
+white(regression, interactions = TRUE)
+```
+
+Goldfeld–Quandt test: The Goldfeld–Quandt test checks for heteroscedasticity in a regression model by comparing the variances of residuals in two subsets of the data, with the null hypothesis being that the error variances are equal (homoscedasticity).
+
+```{r message=FALSE, warning=FALSE}
+
+gqtest(regression)
+```
+
+#### Refined White heteroscedasticity-robust SE
+
+```{r}
+
+coeftest(regression)
+
+coeftest(regression, vcov = hccm) # heteroscedasticity-corrected covariance matrices
+coeftest(regression, vcov. = vcovHC, type = 'HC1')
+coeftest(regression, vcov. = vcovHC, type = 'HC3') 
+
+# F-Tests:
+
+linearHypothesis(regression, c('sqrft =0', 'bdrms = 0'))
+linearHypothesis(regression, c('sqrft =0', 'bdrms = 0'), vcov = hccm)
+
+linearHypothesis(regression, c('sqrft = 0', 'bdrms = 0'), white.adjust = 'hc3')
+```
+
+#### WLS
+
+Weighted Least Squares (WLS) attempts to provide a more efficient alternative to OLS. It is a special version of a feasible generalized least squares (FGLS) estimator. Instead of the sum of squared residuals, their weighted sum is minimized. If the weights are inversely proportional to the variance, the estimator is efficient. Also the usual formula for the variance-covariance matrix of the parameter estimates and standard inference tools are valid.
+
+```{r message=FALSE, warning=FALSE}
+
+data(wage1, package = 'wooldridge')
+
+wage_vs_educ_exper = lm(wage ~ educ + exper + I(exper^2) + I(educ^2), wage1)
+summary(wage_vs_educ_exper)
+bptest(wage_vs_educ_exper)
+
+plot(wage_vs_educ_exper, which = 1, pch = 20, cex = 1.2)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+wls_wage_vs_educ_exper = lm(wage ~ educ + exper + I(exper^2) + I(educ^2), weight = 1/exper,
+                           data = wage1)
+summary(wls_wage_vs_educ_exper)
+```
+
+The assumption that the variance is proportional to a regressor is usually hard to justify. Typically, we don’t not know the variance function and have to estimate it. This feasible GLS (FGLS) estimator replaces the (allegedly) known variance function with an estimated one.
+
+#### FGLS
+
+```{r message=FALSE, warning=FALSE}
+
+data(smoke, package = 'wooldridge')
+
+olsreg = lm(cigs ~ log(income) + log(cigpric) + educ + age + I(age^2) + restaurn,
+            data = smoke)
+summary(olsreg)
+bptest(olsreg)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+logu2 = log(resid(olsreg) ^ 2)
+varreg = lm(logu2 ~ log(income) + log(cigpric) + educ + age + I(age^2) + restaurn,
+            data = smoke)
+
+w = 1/exp(fitted(varreg))
+
+fglsreg = lm(cigs ~ log(income) + log(cigpric) + educ + age + I(age^2) + restaurn, 
+             weight = w, data = smoke)
+summary(fglsreg)
+```

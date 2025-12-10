@@ -1,0 +1,171 @@
+---
+title: "5 Descriptive Statistics"
+author: "Mohammadamin Firouzi"
+date: "2025-03-02`"
+output: html_document
+---
+
+# Descriptive Statistics
+
+```{r message=FALSE, warning=FALSE}
+
+data(bwght, package = "wooldridge")
+bwght
+```
+
+#### Frequencies and contingency tables
+
+```{r, warning=FALSE, message = FALSE}
+
+table(bwght$male)
+
+# Generate "Factors" to attach labels:
+
+bwght$male = factor(bwght$male, labels = c("Female", "Male"))
+table(bwght$male)
+prop.table(table(bwght$male))
+
+bwght$white = factor(bwght$white, labels = c("Non-white", "White"))
+table(bwght$white)
+prop.table(table(bwght$white))
+
+# Aternative: dplyr
+
+library(dplyr)
+
+bwght |>
+  count(white)
+
+# Contingency table: counts
+
+attach(bwght)
+
+table(male, white)
+prop.table(table(male, white))
+prop.table(table(male, white), margin = 1)
+prop.table(table(male, white), margin = 2)
+
+(137/(137 + 162))
+(561/(528 + 561))
+
+# Aternative: dplyr
+
+bwght |>
+  count(male, white)
+
+bwght |>
+  count(male, white, packs)
+
+library(ggplot2)
+
+bwght |>
+  count(fatheduc, motheduc) |>
+  ggplot(aes(x = fatheduc, y = motheduc)) +
+  geom_tile(aes(fill = n)) +
+  theme_light()
+```
+
+#### Bar plot
+
+```{r, warning=FALSE, message = FALSE}
+
+library(ggplot2)
+
+ggplot(bwght) +
+  geom_bar(aes(x = male), width = 0.5)
+
+ggplot(bwght) +
+  geom_bar(aes(x = male), width = 0.2) +
+  # scale_x_discrete(labels = c("Women", "Men")) +
+  labs(x = 'Gender', y = 'Count') +
+  coord_flip() +
+  theme_light()
+
+data(wage1, package = "wooldridge")
+
+ggplot(wage1, aes(x = educ, fill = factor(educ), color = 'black')) +
+  geom_bar(width = 0.4, show.legend = FALSE) +
+  labs(title = "Education",
+       x = "Education by year",
+       y = "Frequency",
+       subtitle = "Source: Wooldrige (2019)") +
+  theme_classic() # theme_light()
+
+ggplot(wage1, aes(x = educ, y = after_stat(prop), group = 1)) +
+  geom_bar(width = 0.4)
+
+ggplot(wage1, aes(x = educ, fill = factor(female))) +
+  geom_bar(width = 0.4)
+
+wage1$female = factor(wage1$female, levels = c(0, 1), labels = c('Male', 'Female'))
+wage1$married = factor(wage1$married, levels = c(0, 1), labels = c('Single', 'Married'))
+
+ggplot(wage1, aes(x = married, fill = female)) +
+  geom_bar(position = "dodge", width = 0.3) +
+  scale_fill_manual(values = c('Female' = 'lightpink', 'Male' = 'steelblue')) +
+  labs(y = 'Count', x = 'Marital Status', fill = 'Gender')
+```
+
+#### Histogram and density
+
+```{r, warning=FALSE, message = FALSE}
+
+wage = wage1$wage
+hist(wage, col = "lightgreen", xlab = 'Wage')
+hist(wage, breaks = c(0, 6, 12, 18, 24, 30))
+
+ggplot(wage1, aes(x = wage)) +
+  geom_histogram(color = "darkgreen", fill = "steelblue") +
+  labs(title = "Histogram of wage", x = "Wage", y = "Frequency") +
+  theme_light() +
+  geom_vline(aes(xintercept = mean(wage)),
+             color = 'darkblue', linetype = "dashed", linewidth = 1) +
+  geom_text(aes(x = mean(wage), label = paste0("Mean = ",round(mean(wage), digits = 2)), y = 80))
+
+plot( density(wage) )
+
+ggplot(wage1, aes(x = wage)) + 
+  geom_density(alpha = 0.2, fill = "#FF6666") +
+  theme_light()
+
+ggplot(wage1, aes(x = wage, color = female)) +
+  geom_density(alpha = 0.3, linewidth = 1) +
+  scale_color_manual(values = c('Female' = 'hotpink', 'Male' = 'steelblue')) +
+  theme_classic()
+
+ggplot(wage1, aes(x = wage)) + 
+  geom_histogram(aes(y = after_stat(density)), color = 'green') +
+  geom_density(lwd = 1,
+               linetype = 2,
+               color = 'black') +
+  theme_light()
+```
+
+#### Box plot
+
+```{r, warning=FALSE, message = FALSE}
+
+boxplot(wage1$wage, horizontal = TRUE)
+boxplot(wage1$wage ~ wage1$female, xlab = 'Gender', ylab = 'Wage',
+        pch = 20, col = 'steelblue', boxwex = 0.3, cex = 1.2)
+
+ggplot(wage1, aes(x = wage, y = female)) +
+  geom_boxplot(col = 'steelblue') +
+  theme_classic() +
+  labs(x = "Wage", y = "Female vs. Male") +
+  coord_flip()
+```
+
+#### R functions for descriptive statistics
+
+```{r, warning=FALSE, message = FALSE}
+
+mean(wage1$wage) # Sample average
+median(wage1$wage) # Sample median
+var(wage1$wage) # Sample variance
+sd(wage1$wage) # Sample standard deviation
+cov(wage1$wage, wage1$educ) # Sample covariance
+cor(wage1$wage, wage1$educ) # Sample correlation
+quantile(wage1$wage, 0.75) # Third quantile
+summary(wage1$wage) # Summary information
+```
