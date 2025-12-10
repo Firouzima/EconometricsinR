@@ -1,1 +1,1 @@
-# EconometricsinR
+# Econometrics in R
